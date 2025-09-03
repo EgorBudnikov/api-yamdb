@@ -59,3 +59,13 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name[:15]
+
+
+class TitleGenre(models.Model):
+    title = models.ForeignKey(Title, on_delete=models.CASCADE,
+                              related_name='title_genres')
+    genre = models.ForeignKey(Genre, on_delete=models.CASCADE,
+                              related_name='titles_genre')
+
+    def __str__(self):
+        return f'{self.title.name} - {self.genre.name}'
