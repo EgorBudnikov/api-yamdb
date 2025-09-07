@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, User
 from reviews.utils import check_year_availability
 
 
@@ -43,3 +43,14 @@ class TitleSerializer(serializers.ModelSerializer):
         year = attrs.get('year')
         check_year_availability(year)
         return attrs
+
+      
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'role',
+                  'first_name', 'last_name', 'bio')
+        extra_kwargs = {
+            'username': {'required': True},
+            'email': {'required': True},
+        }
