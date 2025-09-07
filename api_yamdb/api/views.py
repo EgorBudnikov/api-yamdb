@@ -2,19 +2,75 @@ import re
 from random import randint
 
 from django.contrib.auth import get_user_model
-from rest_framework import filters, viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, pagination, viewsets, exceptions, mixins
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
-from api.permissions import AdminPerm
-from api.serializers import UserSerializer
-from api.utils import send_mail_code
-from reviews.models import ConfirmationCode, User
+from api.permissions import AdminPerm #IsAdminOrReadOnly
+from api.serializers import (
+    CategorySerializer,
+    GenreSerializer,
+    TitleSerializer,
+    UserSerializer
+)
 
+from api.filters import TitleFilter
+from reviews.models import Title, Genre, Category, ConfirmationCode, User
+from api.utils import send_mail_code
 
 User = get_user_model()
+
+
+class CreateListDestroyViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    pass
+
+
+class TitleViewSet(viewsets.ModelViewSet):
+    """Вьюсет для модели Произведение."""
+
+    queryset = Title.objects.all()
+    serializer_class = TitleSerializer
+    pagination_class = pagination.LimitOffsetPagination
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter)
+    filterset_class = TitleFilter
+    # permission_classes = (IsAdminOrReadOnly,)
+
+    def update(self, request, *args, **kwargs):
+        if self.request.method == 'PUT':
+            raise exceptions.MethodNotAllowed('PUT method is not allowed')
+        return super().update(request, *args, **kwargs)
+
+
+class GenreViewSet(CreateListDestroyViewSet):
+    """Вьюсет для модели Жанр."""
+
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    pagination_class = pagination.LimitOffsetPagination
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+    # permission_classes = (IsAdminOrReadOnly,)
+
+
+class CategoryViewSet(CreateListDestroyViewSet):
+    """Вьюсет для модели Категория."""
+
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    pagination_class = pagination.LimitOffsetPagination
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+    # permission_classes = (IsAdminOrReadOnly,)
 
 
 @api_view(['POST'])
