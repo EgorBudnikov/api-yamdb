@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
-from api.permissions import AdminPerm #IsAdminOrReadOnly
+from api.permissions import AdminPerm, IsAdminOrReadOnly
 from api.serializers import (
     CategorySerializer,
     GenreSerializer,
@@ -41,7 +41,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     pagination_class = pagination.LimitOffsetPagination
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
     filterset_class = TitleFilter
-    # permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (IsAdminOrReadOnly,)
 
     def update(self, request, *args, **kwargs):
         if self.request.method == 'PUT':
@@ -58,7 +58,7 @@ class GenreViewSet(CreateListDestroyViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
-    # permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 class CategoryViewSet(CreateListDestroyViewSet):
@@ -70,7 +70,7 @@ class CategoryViewSet(CreateListDestroyViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
-    # permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (IsAdminOrReadOnly,)
 
 
 @api_view(['POST'])
