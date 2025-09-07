@@ -4,6 +4,8 @@ from reviews.utils import check_year_availability
 
 
 class Category(models.Model):
+    """Модель категорий."""
+
     name = models.CharField(
         max_length=256,
         verbose_name='Категория',
@@ -22,6 +24,8 @@ class Category(models.Model):
 
 
 class Genre(models.Model):
+    """Модель жанров."""
+
     name = models.CharField(max_length=256, verbose_name='Жанр',
                             help_text='Введите жанр')
     slug = models.SlugField(max_length=50, unique=True,
@@ -37,6 +41,8 @@ class Genre(models.Model):
 
 
 class Title(models.Model):
+    """Модель произведений."""
+
     name = models.CharField(max_length=256, verbose_name='Произведение',
                             help_text='Введите название произведения')
     year = models.PositiveSmallIntegerField(
@@ -62,6 +68,8 @@ class Title(models.Model):
 
 
 class TitleGenre(models.Model):
+    """Дополнительная модель: Произведение - Жанр."""
+
     title = models.ForeignKey(Title, on_delete=models.CASCADE,
                               related_name='title_genres')
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE,

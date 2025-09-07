@@ -22,6 +22,8 @@ class CreateListDestroyViewSet(
 
 
 class TitleViewSet(viewsets.ModelViewSet):
+    """Вьюсет для модели Произведение."""
+
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = pagination.LimitOffsetPagination
@@ -36,6 +38,8 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 
 class GenreViewSet(CreateListDestroyViewSet):
+    """Вьюсет для модели Жанр."""
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     pagination_class = pagination.LimitOffsetPagination
@@ -46,6 +50,8 @@ class GenreViewSet(CreateListDestroyViewSet):
 
 
 class CategoryViewSet(CreateListDestroyViewSet):
+    """Вьюсет для модели Категория."""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = pagination.LimitOffsetPagination
