@@ -44,7 +44,7 @@ class TitleSerializer(serializers.ModelSerializer):
         check_year_availability(year)
         return attrs
 
-      
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
