@@ -22,7 +22,8 @@ from api.permissions import (
 )
 from api.serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
-    ReviewSerializer, TitleSerializer, UserSerializer
+    ReviewSerializer, TitleCreateUpdateSerializer, TitleDisplaySerializer,
+    UserSerializer
 )
 from api.utils import send_mail_code
 from reviews.models import (
@@ -32,13 +33,18 @@ from reviews.models import (
 User = get_user_model()
 
 
-class CreateListDestroyViewSet(
+class BaseCreateListDestroyViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """Базовый вьюсет."""
+    """Базовый вьюсет с общими настройками."""
+    pagination_class = pagination.LimitOffsetPagination
+    filter_backends = (filters.SearchFilter,)
+    permission_classes = (IsAdminOrReadOnly,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
     pass
 
@@ -46,41 +52,32 @@ class CreateListDestroyViewSet(
 class TitleViewSet(viewsets.ModelViewSet):
     """Вьюсет для модели Произведение."""
 
-    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
-    serializer_class = TitleSerializer
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')).order_by('rating')
     pagination_class = pagination.LimitOffsetPagination
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
     filterset_class = TitleFilter
     permission_classes = (IsAdminOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
-    def update(self, request, *args, **kwargs):
-        if self.request.method == 'PUT':
-            raise exceptions.MethodNotAllowed('PUT method is not allowed')
-        return super().update(request, *args, **kwargs)
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return TitleCreateUpdateSerializer
+        return TitleDisplaySerializer
 
 
-class GenreViewSet(CreateListDestroyViewSet):
+class GenreViewSet(BaseCreateListDestroyViewSet):
     """Вьюсет для модели Жанр."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    pagination_class = pagination.LimitOffsetPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-    permission_classes = (IsAdminOrReadOnly,)
 
 
-class CategoryViewSet(CreateListDestroyViewSet):
+class CategoryViewSet(BaseCreateListDestroyViewSet):
     """Вьюсет для модели Категория."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    pagination_class = pagination.LimitOffsetPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-    permission_classes = (IsAdminOrReadOnly,)
 
 
 @api_view(['POST'])
