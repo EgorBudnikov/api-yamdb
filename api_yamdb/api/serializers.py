@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
+
 from reviews.models import Category, Comment, Genre, Review, Title, User
 from reviews.utils import check_year_availability
 
@@ -47,6 +48,7 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Сериализатор регистрации пользователей."""
     class Meta:
         model = User
         fields = ('username', 'email', 'role',

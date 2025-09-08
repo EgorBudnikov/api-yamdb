@@ -4,23 +4,30 @@ from random import randint
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
-
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import exceptions, filters, mixins, pagination, viewsets
+from rest_framework import (
+    exceptions, filters, mixins, pagination, viewsets
+)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-from reviews.models import (Category, Comment, ConfirmationCode, Genre, Review,
-                            Title, User)
 
+from api.constants import (
+    BAD_REQUEST, NOT_FOUND, LEN_EMAIL, LEN_USERNAME, METHOD_NOT_ALLOWED
+)
 from api.filters import TitleFilter
-from api.permissions import (AdminPerm, IsAdminOrReadOnly,
-                             IsAuthorModeratorAdminOrReadOnly)
-from api.serializers import (CategorySerializer, CommentSerializer,
-                             GenreSerializer, ReviewSerializer,
-                             TitleSerializer, UserSerializer)
+from api.permissions import (
+    AdminPerm, IsAdminOrReadOnly, IsAuthorModeratorAdminOrReadOnly
+)
+from api.serializers import (
+    CategorySerializer, CommentSerializer, GenreSerializer,
+    ReviewSerializer, TitleSerializer, UserSerializer
+)
 from api.utils import send_mail_code
+from reviews.models import (
+    Category, Comment, ConfirmationCode, Genre, Review, Title, User
+)
 
 User = get_user_model()
 
@@ -31,6 +38,8 @@ class CreateListDestroyViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
+    """Базовый вьюсет."""
+
     pass
 
 
@@ -83,10 +92,10 @@ def register_user(request):
     username = request.data.get('username')
     errors = {}
 
-    if email and len(email) > 254:
+    if email and len(email) > LEN_EMAIL:
         errors['email'] = ['Длина email не больше 254 символов.']
 
-    if username and len(username) > 150:
+    if username and len(username) > LEN_USERNAME:
         errors['username'] = ['Длина username не больше 150 символов.']
 
     if len(request.data) != 2:
@@ -114,7 +123,7 @@ def register_user(request):
             errors['email'] = ['Введите корректный email.']
 
     if errors:
-        return Response(errors, status=400)
+        return Response(errors, status=BAD_REQUEST)
 
     # Проверяем существующих пользователей
     try:
@@ -135,7 +144,7 @@ def register_user(request):
     ):
         errors['email'] = ['Такой email уже существует.']
         errors['username'] = ['Такой username уже существует.']
-        return Response(errors, status=400)
+        return Response(errors, status=BAD_REQUEST)
 
     # Случай 2: Email существует, но username другой
     if (
@@ -144,7 +153,7 @@ def register_user(request):
              or existing_user_by_email != existing_user_by_username)
     ):
         errors['email'] = ['Такой email уже существует.']
-        return Response(errors, status=400)
+        return Response(errors, status=BAD_REQUEST)
 
     # Случай 3: Username существует, но email другой
     if (
@@ -154,7 +163,7 @@ def register_user(request):
     ):
         return Response(
             {'username': ['Такой username уже существует.']},
-            status=400
+            status=BAD_REQUEST
         )
 
     # Случай 4: Один и тот же пользователь (повторный запрос кода)
@@ -189,7 +198,7 @@ def token_obtain(request):
             {
                 'error': 'Для токена используйте username и confirmation_code.'
             },
-            status=400
+            status=BAD_REQUEST
         )
 
     try:
@@ -202,12 +211,12 @@ def token_obtain(request):
     except User.DoesNotExist:
         return Response(
             {'error': ['Пользователь с таким username не найден.']},
-            status=404
+            status=NOT_FOUND
         )
     except ConfirmationCode.DoesNotExist:
         return Response(
             {'error': ['Неверный код подтверждения.']},
-            status=400
+            status=BAD_REQUEST
         )
 
     user.is_active = True
@@ -254,7 +263,7 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
-            return Response({'detail': 'Метод PUT запрещет. Используйте PATCH.'}, status=405)
+            return Response({'detail': 'Метод PUT запрещет. Используйте PATCH.'}, status=METHOD_NOT_ALLOWED)
         return super().update(request, *args, **kwargs)
 
 
