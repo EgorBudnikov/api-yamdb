@@ -86,11 +86,46 @@ class CategoryViewSet(CreateListDestroyViewSet):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
-    '''Функция для регистрации новых пользователей.'''
+    """
+    Обрабатывает регистрацию нового пользователя.
 
+    Принимает POST-запрос с данными email и username.
+    Проводит валидацию данных, проверяет существующих пользователей
+    и либо создает нового пользователя, либо возвращает ошибки.
+    """
     email = request.data.get('email')
     username = request.data.get('username')
+
+    # Валидация базовых проверок
+    errors = _validate_basic_checks(request, email, username)
+    if errors:
+        return Response(errors, status=BAD_REQUEST)
+
+    # Валидация форматов
+    format_errors = _validate_formats(email, username)
+    if format_errors:
+        return Response(format_errors, status=BAD_REQUEST)
+
+    # Проверка существующих пользователей
+    return _handle_user_registration(email, username)
+
+
+def _validate_basic_checks(request, email, username):
+    """
+    Проверяет базовые условия валидации данных регистрации.
+
+    Проверяет наличие обязательных полей, их длину и специальные случаи.
+    """
     errors = {}
+
+    if len(request.data) != 2:
+        errors['errors'] = ['Должно быть только два поля username и email.']
+
+    if not email:
+        errors['email'] = ['Поле отсутствует.']
+
+    if not username:
+        errors['username'] = ['Поле отсутствует.']
 
     if email and len(email) > LEN_EMAIL:
         errors['email'] = ['Длина email не больше 254 символов.']
@@ -98,84 +133,82 @@ def register_user(request):
     if username and len(username) > LEN_USERNAME:
         errors['username'] = ['Длина username не больше 150 символов.']
 
-    if len(request.data) != 2:
-        errors['errors'] = ['Должно быть только два поля username и email.']
-
-    if not email:
-        errors['email'] = ['Поле отсутсвует.']
-
-    if not username:
-        errors['username'] = ['Поле отсутсвует.']
-
     if username == 'me':
         errors['username'] = ['Нельзя использовать в username "me".']
 
+    return errors
+
+
+def _validate_formats(email, username):
+    """
+    Проверяет форматы email и username на соответствие паттернам.
+    """
+    errors = {}
+
     if username:
         username_pattern = r'^[\w.@+-]+\Z'
-
         if not re.match(username_pattern, username):
             errors['username'] = [
-                'Должен состоять из латинских букв, цифр и символов "w.@+-".']
+                'Должен состоять из латинских букв, цифр и символов "w.@+-".'
+            ]
 
     if email:
         email_pattern = r'^[a-zA-Z\d_.+-]+@[a-zA-Z\d]+\.[a-zA-Z\d.]+$'
         if not re.match(email_pattern, email):
             errors['email'] = ['Введите корректный email.']
 
-    if errors:
-        return Response(errors, status=BAD_REQUEST)
+    return errors
 
-    # Проверяем существующих пользователей
+
+def _handle_user_registration(email, username):
+    """
+    Обрабатывает логику регистрации пользователя на основе проверок.
+
+    Проверяет существующих пользователей, обрабатывает конфликты
+    и создает нового пользователя при успешной проверке.
+    """
     try:
-        existing_user_by_email = User.objects.get(email=email)
+        user_by_email = User.objects.get(email=email)
     except User.DoesNotExist:
-        existing_user_by_email = None
+        user_by_email = None
 
     try:
-        existing_user_by_username = User.objects.get(username=username)
+        user_by_username = User.objects.get(username=username)
     except User.DoesNotExist:
-        existing_user_by_username = None
+        user_by_username = None
 
-    # Случай 1: Email и username принадлежат разным пользователям
+    # Оба пользователя существуют и это разные люди
     if (
-        existing_user_by_email
-        and existing_user_by_username
-        and existing_user_by_email != existing_user_by_username
+        user_by_email
+        and user_by_username
+        and user_by_email != user_by_username
     ):
-        errors['email'] = ['Такой email уже существует.']
-        errors['username'] = ['Такой username уже существует.']
-        return Response(errors, status=BAD_REQUEST)
+        return Response({
+            'email': ['Такой email уже существует.'],
+            'username': ['Такой username уже существует.']
+        }, status=BAD_REQUEST)
 
-    # Случай 2: Email существует, но username другой
-    if (
-        existing_user_by_email
-        and (not existing_user_by_username
-             or existing_user_by_email != existing_user_by_username)
+    # Email уже существует
+    if user_by_email and (
+        not user_by_username or user_by_email != user_by_username
     ):
-        errors['email'] = ['Такой email уже существует.']
-        return Response(errors, status=BAD_REQUEST)
+        return Response({
+            'email': ['Такой email уже существует.']
+        }, status=BAD_REQUEST)
 
-    # Случай 3: Username существует, но email другой
-    if (
-        existing_user_by_username
-            and (not existing_user_by_email
-                 or existing_user_by_username != existing_user_by_email)
+    # Username уже существует
+    if user_by_username and (
+        not user_by_email or user_by_username != user_by_email
     ):
-        return Response(
-            {'username': ['Такой username уже существует.']},
-            status=BAD_REQUEST
-        )
+        return Response({
+            'username': ['Такой username уже существует.']
+        }, status=BAD_REQUEST)
 
-    # Случай 4: Один и тот же пользователь (повторный запрос кода)
-    if (
-        existing_user_by_email
-        and existing_user_by_username
-            and existing_user_by_email == existing_user_by_username):
-        return send_mail_code(
-            existing_user_by_email, existing_user_by_email.email
-        )
+    # Пользователь уже существует (повторный запрос)
+    if user_by_email and user_by_username:
+        return send_mail_code(user_by_email, email)
 
-    # Случай 5: Новый пользователь
+    # Новый пользователь
     user = User.objects.create_user(
         username=username,
         email=email,
@@ -263,7 +296,9 @@ class UsersViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
-            return Response({'detail': 'Метод PUT запрещет. Используйте PATCH.'}, status=METHOD_NOT_ALLOWED)
+            return Response(
+                {'detail': 'Метод PUT запрещет. Используйте PATCH.'},
+                status=METHOD_NOT_ALLOWED)
         return super().update(request, *args, **kwargs)
 
 
