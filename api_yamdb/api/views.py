@@ -2,23 +2,24 @@ import re
 from random import randint
 
 from django.contrib.auth import get_user_model
+from django.db.models import Avg
+from django.shortcuts import get_object_or_404
+
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, pagination, viewsets, exceptions, mixins
+from rest_framework import exceptions, filters, mixins, pagination, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-
-from api.permissions import AdminPerm, IsAdminOrReadOnly
-from api.serializers import (
-    CategorySerializer,
-    GenreSerializer,
-    TitleSerializer,
-    UserSerializer
-)
+from reviews.models import (Category, Comment, ConfirmationCode, Genre, Review,
+                            Title, User)
 
 from api.filters import TitleFilter
-from reviews.models import Title, Genre, Category, ConfirmationCode, User
+from api.permissions import (AdminPerm, IsAdminOrReadOnly,
+                             IsAuthorModeratorAdminOrReadOnly)
+from api.serializers import (CategorySerializer, CommentSerializer,
+                             GenreSerializer, ReviewSerializer,
+                             TitleSerializer, UserSerializer)
 from api.utils import send_mail_code
 
 User = get_user_model()
@@ -36,7 +37,7 @@ class CreateListDestroyViewSet(
 class TitleViewSet(viewsets.ModelViewSet):
     """Вьюсет для модели Произведение."""
 
-    queryset = Title.objects.all()
+    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
     serializer_class = TitleSerializer
     pagination_class = pagination.LimitOffsetPagination
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
@@ -255,3 +256,47 @@ class UsersViewSet(viewsets.ModelViewSet):
         if request.method == 'PUT':
             return Response({'detail': 'Метод PUT запрещет. Используйте PATCH.'}, status=405)
         return super().update(request, *args, **kwargs)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с отзывами: CRUD."""
+
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+    serializer_class = ReviewSerializer
+    permission_classes = (IsAuthorModeratorAdminOrReadOnly, )
+
+    def get_queryset(self):
+        title_id = self.kwargs.get('title_id')
+        return Review.objects.select_related('author').filter(title=title_id)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['title_id'] = self.kwargs.get('title_id')
+        return context
+
+    def perform_create(self, serializer):
+        title_id = self.kwargs.get('title_id')
+        title = get_object_or_404(Title, pk=title_id)
+        serializer.save(author=self.request.user, title=title)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с комментариями: CRUD."""
+
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+    serializer_class = CommentSerializer
+    pagination_class = pagination.LimitOffsetPagination
+    permission_classes = (IsAuthorModeratorAdminOrReadOnly, )
+
+    def get_queryset(self):
+        review_id = self.kwargs.get('review_id')
+        return (
+            Comment.objects
+            .select_related('author')
+            .filter(review=review_id)
+        )
+
+    def perform_create(self, serializer):
+        review_id = self.kwargs.get('review_id')
+        review = get_object_or_404(Review, pk=review_id)
+        serializer.save(author=self.request.user, review=review)

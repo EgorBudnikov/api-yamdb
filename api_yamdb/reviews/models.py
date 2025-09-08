@@ -1,8 +1,8 @@
-from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
+from django.db import models
 
-from reviews.utils import check_year_availability
+from reviews.utils import check_score, check_year_availability
 
 CHOICES = (
     ('user', 'Пользователь'),
@@ -131,3 +131,61 @@ class ConfirmationCode(models.Model):
     code = models.CharField(max_length=6, verbose_name='Код доступа')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата')
     is_used = models.BooleanField(default=False, verbose_name='Активирован')
+
+
+class Review(models.Model):
+    """Модель для отзывов."""
+
+    title = models.ForeignKey(
+        Title, on_delete=models.CASCADE,
+        related_name='reviews',
+        verbose_name='Произведение'
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='reviews',
+        verbose_name='Автор отзыва'
+    )
+    text = models.TextField('Текст отзыва')
+    score = models.PositiveSmallIntegerField(
+        verbose_name='Оценка',
+        validators=(check_score,),
+    )
+    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['title', 'author'],
+                name='unique_review'
+            )
+        ]
+
+    def __str__(self):
+        return f'Отзыв автора {self.author} на {self.title}'
+
+
+class Comment(models.Model):
+    """Модель для комментариев к отзывам."""
+
+    review = models.ForeignKey(
+        Review, on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Отзыв'
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Автор комментария'
+    )
+    text = models.TextField('Текст комментария')
+    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+
+    def __str__(self):
+        return f'Комментарий автора {self.author}'

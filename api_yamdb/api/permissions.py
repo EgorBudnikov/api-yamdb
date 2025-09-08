@@ -7,7 +7,7 @@ class AdminPerm(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and (
             request.user.is_admin or request.user.is_superuser
-            )
+        )
 
     def has_objects_permission(self, request, view, obj):
         """Проверка после создания объекта."""
@@ -30,3 +30,28 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         if request.user.is_authenticated:
             return request.user.is_admin
         return False
+
+
+class IsAuthorModeratorAdminOrReadOnly(permissions.BasePermission):
+    """
+    Проверка прав пользователей.
+
+    Чтение - для всех;
+    Создание - только аутентифицированным пользователям;
+    Изменение/удаление - автору, модератору, администратору, суперпользователю.
+    """
+
+    def has_permission(self, request, view):
+        return (
+            request.method in permissions.SAFE_METHODS
+            or request.user.is_authenticated
+        )
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return (
+            obj.author == request.user
+            or request.user.role in ('moderator', 'admin')
+            or request.user.is_superuser
+        )
