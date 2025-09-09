@@ -8,7 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import (
     exceptions, filters, mixins, pagination, viewsets
 )
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
@@ -259,28 +259,6 @@ def token_obtain(request):
     return Response({'token': str(token)})
 
 
-@api_view(['GET', 'PATCH'])
-@permission_classes([IsAuthenticated])
-def change_profile(request):
-    """Функция обработки метода PATCH для изменения профиля."""
-    user = request.user
-
-    if request.method == 'PATCH':
-        data = request.data.copy()
-
-        if not user.is_admin:
-            data['role'] = user.role
-
-        serializer = UserSerializer(user, data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
-
-    elif request.method == 'GET':
-        serializer = UserSerializer(user)
-        return Response(serializer.data)
-
-
 class UsersViewSet(viewsets.ModelViewSet):
     """Вьюсет на работу с юзерами админу и суперюзеру."""
 
@@ -297,6 +275,27 @@ class UsersViewSet(viewsets.ModelViewSet):
                 {'detail': 'Метод PUT запрещет. Используйте PATCH.'},
                 status=METHOD_NOT_ALLOWED)
         return super().update(request, *args, **kwargs)
+
+    @action(
+        detail=False,
+        methods=['get', 'patch'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        """Для обработки get/patch запроса к урлу api/v1/users/me."""
+        user = request.user
+
+        if request.method == 'PATCH':
+            data = request.data.copy()
+
+            if not user.is_admin:
+                data['role'] = user.role
+
+            serializer = UserSerializer(user, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            serializer = UserSerializer(user)
+            return Response(serializer.data)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

@@ -7,6 +7,7 @@ from reviews.utils import check_year_availability
 
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для модели Категория."""
+
     class Meta:
         model = Category
         exclude = ('id',)
@@ -14,6 +15,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class GenreSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Жанр."""
+
     class Meta:
         model = Genre
         exclude = ('id',)
@@ -21,6 +23,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class TitleCreateUpdateSerializer(serializers.ModelSerializer):
     """Сериализатор для создания и обновления произведения."""
+
     genre = serializers.SlugRelatedField(
         many=True, slug_field='slug', queryset=Genre.objects.all()
     )
@@ -32,14 +35,14 @@ class TitleCreateUpdateSerializer(serializers.ModelSerializer):
         model = Title
         fields = '__all__'
 
-    def validate(self, attrs):
-        year = attrs.get('year')
-        check_year_availability(year)
+    def validate_year(self, attrs):
+        check_year_availability(attrs)
         return attrs
 
 
 class TitleDisplaySerializer(serializers.ModelSerializer):
     """Сериализатор для вывода произведения."""
+
     genre = GenreSerializer(many=True)
     category = CategorySerializer()
     rating = serializers.IntegerField(read_only=True, default=0)
@@ -59,6 +62,7 @@ class TitleDisplaySerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор регистрации пользователей."""
+
     class Meta:
         model = User
         fields = ('username', 'email', 'role',
