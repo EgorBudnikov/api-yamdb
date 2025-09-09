@@ -19,15 +19,30 @@ class GenreSerializer(serializers.ModelSerializer):
         exclude = ('id',)
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Произведение."""
+class TitleCreateUpdateSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания и обновления произведения."""
     genre = serializers.SlugRelatedField(
         many=True, slug_field='slug', queryset=Genre.objects.all()
     )
     category = serializers.SlugRelatedField(
         slug_field='slug', queryset=Category.objects.all()
     )
-    rating = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Title
+        fields = '__all__'
+
+    def validate(self, attrs):
+        year = attrs.get('year')
+        check_year_availability(year)
+        return attrs
+
+
+class TitleDisplaySerializer(serializers.ModelSerializer):
+    """Сериализатор для вывода произведения."""
+    genre = GenreSerializer(many=True)
+    category = CategorySerializer()
+    rating = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Title
@@ -40,11 +55,6 @@ class TitleSerializer(serializers.ModelSerializer):
         ).data
         representation['category'] = CategorySerializer(instance.category).data
         return representation
-
-    def validate(self, attrs):
-        year = attrs.get('year')
-        check_year_availability(year)
-        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):
