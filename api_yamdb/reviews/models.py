@@ -129,16 +129,6 @@ class User(AbstractUser):
         return self.role == 'moderator'
 
 
-class ConfirmationCode(models.Model):
-    """Модель для регистрации пользователя."""
-
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name='Пользователь')
-    code = models.CharField(max_length=6, verbose_name='Код доступа')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата')
-    is_used = models.BooleanField(default=False, verbose_name='Активирован')
-
-
 class Review(models.Model):
     """Модель для отзывов."""
 

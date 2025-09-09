@@ -2,6 +2,7 @@ import re
 from random import randint
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -27,7 +28,7 @@ from api.serializers import (
 )
 from api.utils import send_mail_code
 from reviews.models import (
-    Category, Comment, ConfirmationCode, Genre, Review, Title, User
+    Category, Comment, Genre, Review, Title, User
 )
 
 User = get_user_model()
@@ -40,13 +41,12 @@ class BaseCreateListDestroyViewSet(
     viewsets.GenericViewSet,
 ):
     """Базовый вьюсет с общими настройками."""
+
     pagination_class = pagination.LimitOffsetPagination
     filter_backends = (filters.SearchFilter,)
     permission_classes = (IsAdminOrReadOnly,)
     search_fields = ('name',)
     lookup_field = 'slug'
-
-    pass
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -210,7 +210,6 @@ def _handle_user_registration(email, username):
         username=username,
         email=email,
         password=str(randint(10, 999999)),
-        is_active=False,
     )
 
     return send_mail_code(user, email)
@@ -237,22 +236,16 @@ def token_obtain(request):
         if user.is_superuser:
             return Response({'token': str(AccessToken.for_user(user))})
 
-        code = ConfirmationCode.objects.get(user=user, code=confirmation_code)
+        if not default_token_generator.check_token(user, confirmation_code):
+            return Response(
+                {'error': ['Неверный код подтверждения.']},
+                status=BAD_REQUEST
+            )
     except User.DoesNotExist:
         return Response(
             {'error': ['Пользователь с таким username не найден.']},
             status=NOT_FOUND
         )
-    except ConfirmationCode.DoesNotExist:
-        return Response(
-            {'error': ['Неверный код подтверждения.']},
-            status=BAD_REQUEST
-        )
-
-    user.is_active = True
-    user.save()
-    code.is_used = True
-    code.save()
 
     token = AccessToken.for_user(user)
 
@@ -268,13 +261,7 @@ class UsersViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
     lookup_field = 'username'
-
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {'detail': 'Метод PUT запрещет. Используйте PATCH.'},
-                status=METHOD_NOT_ALLOWED)
-        return super().update(request, *args, **kwargs)
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     @action(
         detail=False,
@@ -284,18 +271,13 @@ class UsersViewSet(viewsets.ModelViewSet):
         user = request.user
 
         if request.method == 'PATCH':
-            data = request.data.copy()
-
-            if not user.is_admin:
-                data['role'] = user.role
-
+            data = request.data
             serializer = UserSerializer(user, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
+            serializer.save(role=user.role)
         else:
             serializer = UserSerializer(user)
-            return Response(serializer.data)
+        return Response(serializer.data)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

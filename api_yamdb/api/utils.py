@@ -1,14 +1,12 @@
 from random import randint
 
 from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework.response import Response
-
-from reviews.models import ConfirmationCode
 
 
 def send_mail_code(user, email):
-    code = str(randint(100000, 999999))
-    ConfirmationCode.objects.create(user=user, code=code)
+    code = default_token_generator.make_token(user)
 
     send_mail(
         'Код подтверждения',
