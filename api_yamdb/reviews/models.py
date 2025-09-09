@@ -1,18 +1,14 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import RegexValidator
 from django.db import models
 
-from reviews.utils import check_score, check_year_availability
-
-CHOICES = (
-    ('user', 'Пользователь'),
-    ('moderator', 'Модератор'),
-    ('admin', 'Админ'),
+from reviews.constants import (
+    LENGTH_EMAIL,
+    LENGTH_ROLE,
+    LENGTH_USERNAME
 )
-
-username_validator = RegexValidator(
-    regex=r'^[\w.@+-]+\Z',
-    message='username может содержать только буквы, цифры и @.+-_'
+from reviews.utils import check_score, check_year_availability
+from reviews.validators import (
+    username_validator, check_name_username_validators
 )
 
 
@@ -96,37 +92,46 @@ class TitleGenre(models.Model):
 class User(AbstractUser):
     """Кастомная модель User."""
 
+    user = 'user'
+    moderator = 'moderator'
+    admin = 'admin'
+
+    CHOICES = (
+        (user, 'Пользователь'),
+        (moderator, 'Модератор'),
+        (admin, 'Админ'),
+    )
+
     username = models.CharField(
-        max_length=150, blank=True, null=False, unique=True,
-        validators=[username_validator],
+        max_length=LENGTH_USERNAME, unique=True,
+        validators=[username_validator, check_name_username_validators],
         error_messages={
             'unique': 'Такой username уже есть.'
-        })
+        }, verbose_name='Имя пользователя')
     email = models.EmailField(
-        max_length=254, blank=True, null=False, unique=True,
+        max_length=LENGTH_EMAIL, unique=True,
         error_messages={
             'unique': 'Такой email уже есть.'
-        })
-    first_name = models.CharField(max_length=150, blank=True)
-    last_name = models.CharField(max_length=150, blank=True)
-    bio = models.TextField(blank=True)
-    role = models.CharField(max_length=10, choices=CHOICES, default='user')
+        }, verbose_name='E-mail')
+    bio = models.TextField(blank=True, verbose_name='Биография')
+    role = models.CharField(max_length=LENGTH_ROLE, choices=CHOICES,
+                            default=user, verbose_name='Роль пользователя')
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
-        ordering = ('id',)
+        ordering = ('username',)
 
     def __str__(self):
         return self.username
 
     @property
     def is_admin(self):
-        return self.role == 'admin' or self.is_superuser
+        return self.role == self.admin or self.is_superuser
 
     @property
     def is_moderator(self):
-        return self.role == 'moderator'
+        return self.role == self.moderator
 
 
 class Review(models.Model):
