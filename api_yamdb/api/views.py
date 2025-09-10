@@ -7,7 +7,7 @@ from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import (
-    exceptions, filters, mixins, pagination, viewsets
+    filters, mixins, pagination, viewsets
 )
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api.constants import (
-    BAD_REQUEST, NOT_FOUND, LEN_EMAIL, LEN_USERNAME, METHOD_NOT_ALLOWED
+    BAD_REQUEST, NOT_FOUND, METHOD_NOT_ALLOWED
 )
 from api.filters import TitleFilter
 from api.permissions import (
@@ -24,7 +24,7 @@ from api.permissions import (
 from api.serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
     ReviewSerializer, TitleCreateUpdateSerializer, TitleDisplaySerializer,
-    UserSerializer
+    UserSerializer, RegisterSerializer
 )
 from api.utils import send_mail_code
 from reviews.models import (
@@ -85,134 +85,19 @@ class CategoryViewSet(BaseCreateListDestroyViewSet):
 def register_user(request):
     """
     Обрабатывает регистрацию нового пользователя.
-
-    Принимает POST-запрос с данными email и username.
-    Проводит валидацию данных, проверяет существующих пользователей
-    и либо создает нового пользователя, либо возвращает ошибки.
+    Всегда возвращает 200, если данные валидны.
     """
-    email = request.data.get('email')
-    username = request.data.get('username')
+    serializer = RegisterSerializer(data=request.data)
 
-    # Валидация базовых проверок
-    errors = _validate_basic_checks(request, email, username)
-    if errors:
-        return Response(errors, status=BAD_REQUEST)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=BAD_REQUEST)
 
-    # Валидация форматов
-    format_errors = _validate_formats(email, username)
-    if format_errors:
-        return Response(format_errors, status=BAD_REQUEST)
+    user = serializer.save()
 
-    # Проверка существующих пользователей
-    return _handle_user_registration(email, username)
-
-
-def _validate_basic_checks(request, email, username):
-    """
-    Проверяет базовые условия валидации данных регистрации.
-
-    Проверяет наличие обязательных полей, их длину и специальные случаи.
-    """
-    errors = {}
-
-    if len(request.data) != 2:
-        errors['errors'] = ['Должно быть только два поля username и email.']
-
-    if not email:
-        errors['email'] = ['Поле отсутствует.']
-
-    if not username:
-        errors['username'] = ['Поле отсутствует.']
-
-    if email and len(email) > LEN_EMAIL:
-        errors['email'] = ['Длина email не больше 254 символов.']
-
-    if username and len(username) > LEN_USERNAME:
-        errors['username'] = ['Длина username не больше 150 символов.']
-
-    if username == 'me':
-        errors['username'] = ['Нельзя использовать в username "me".']
-
-    return errors
-
-
-def _validate_formats(email, username):
-    """
-    Проверяет форматы email и username на соответствие паттернам.
-    """
-    errors = {}
-
-    if username:
-        username_pattern = r'^[\w.@+-]+\Z'
-        if not re.match(username_pattern, username):
-            errors['username'] = [
-                'Должен состоять из латинских букв, цифр и символов "w.@+-".'
-            ]
-
-    if email:
-        email_pattern = r'^[a-zA-Z\d_.+-]+@[a-zA-Z\d]+\.[a-zA-Z\d.]+$'
-        if not re.match(email_pattern, email):
-            errors['email'] = ['Введите корректный email.']
-
-    return errors
-
-
-def _handle_user_registration(email, username):
-    """
-    Обрабатывает логику регистрации пользователя на основе проверок.
-
-    Проверяет существующих пользователей, обрабатывает конфликты
-    и создает нового пользователя при успешной проверке.
-    """
-    try:
-        user_by_email = User.objects.get(email=email)
-    except User.DoesNotExist:
-        user_by_email = None
-
-    try:
-        user_by_username = User.objects.get(username=username)
-    except User.DoesNotExist:
-        user_by_username = None
-
-    # Оба пользователя существуют и это разные люди
-    if (
-        user_by_email
-        and user_by_username
-        and user_by_email != user_by_username
-    ):
-        return Response({
-            'email': ['Такой email уже существует.'],
-            'username': ['Такой username уже существует.']
-        }, status=BAD_REQUEST)
-
-    # Email уже существует
-    if user_by_email and (
-        not user_by_username or user_by_email != user_by_username
-    ):
-        return Response({
-            'email': ['Такой email уже существует.']
-        }, status=BAD_REQUEST)
-
-    # Username уже существует
-    if user_by_username and (
-        not user_by_email or user_by_username != user_by_email
-    ):
-        return Response({
-            'username': ['Такой username уже существует.']
-        }, status=BAD_REQUEST)
-
-    # Пользователь уже существует (повторный запрос)
-    if user_by_email and user_by_username:
-        return send_mail_code(user_by_email, email)
-
-    # Новый пользователь
-    user = User.objects.create_user(
-        username=username,
-        email=email,
-        password=str(randint(10, 999999)),
-    )
-
-    return send_mail_code(user, email)
+    return Response({
+        'email': user.email,
+        'username': user.username
+    })
 
 
 @api_view(['POST'])
