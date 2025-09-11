@@ -9,10 +9,23 @@ from reviews.constants import (
     TEXT_MAX_LENGHT,
     SLUG_MAX_LENGTH
 )
-from reviews.utils import check_score, check_year_availability
 from reviews.validators import (
-    username_validator, check_name_username_validators
+    check_name_username_validators,
+    check_score,
+    check_year_availability,
+    username_validator
 )
+
+
+class ContentBaseModel(models.Model):
+    """Абстрактная модель для пользовательского контента."""
+
+    text = models.TextField('Текст')
+    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
+
+    class Meta:
+        abstract = True
+        ordering = ('-pub_date',)
 
 
 class BaseModel(models.Model):
@@ -38,7 +51,8 @@ class BaseModel(models.Model):
 class Category(BaseModel):
     """Модель категорий."""
 
-    class Meta:
+    class Meta(BaseModel.Meta):
+        abstract = False
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
@@ -46,7 +60,8 @@ class Category(BaseModel):
 class Genre(BaseModel):
     """Модель жанров."""
 
-    class Meta:
+    class Meta(BaseModel.Meta):
+        abstract = False
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -82,6 +97,7 @@ class Title(models.Model):
     def get_genre_list(self):
         """Возвращает строку с жанрами, разделёнными запятыми."""
         return ', '.join([genre.name for genre in self.genre.all()])
+    get_genre_list.short_description = 'Жанры'
 
 
 class TitleGenre(models.Model):
@@ -141,30 +157,27 @@ class User(AbstractUser):
         return self.role == self.moderator
 
 
-class Review(models.Model):
+class Review(ContentBaseModel):
     """Модель для отзывов."""
 
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE,
-        related_name='reviews',
         verbose_name='Отзыв'
     )
     author = models.ForeignKey(
         User, on_delete=models.CASCADE,
-        related_name='reviews',
         verbose_name='Автор отзыва'
     )
-    text = models.TextField('Текст отзыва')
     score = models.PositiveSmallIntegerField(
         verbose_name='Оценка',
         validators=(check_score,),
     )
-    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
 
-    class Meta:
+    class Meta(ContentBaseModel.Meta):
+        abstract = False
+        default_related_name = 'reviews'
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
-        ordering = ('-pub_date',)
         constraints = [
             models.UniqueConstraint(
                 fields=['title', 'author'],
@@ -176,26 +189,23 @@ class Review(models.Model):
         return f'Отзыв автора {self.author} на {self.title}'
 
 
-class Comment(models.Model):
+class Comment(ContentBaseModel):
     """Модель для комментариев к отзывам."""
 
     review = models.ForeignKey(
         Review, on_delete=models.CASCADE,
-        related_name='comments',
         verbose_name='Отзыв'
     )
     author = models.ForeignKey(
         User, on_delete=models.CASCADE,
-        related_name='comments',
         verbose_name='Автор комментария'
     )
-    text = models.TextField('Текст комментария')
-    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
 
-    class Meta:
+    class Meta(ContentBaseModel.Meta):
+        abstract = False
+        default_related_name = 'comments'
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ('-pub_date',)
 
     def __str__(self):
         return f'Комментарий автора {self.author}'

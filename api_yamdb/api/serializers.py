@@ -12,7 +12,7 @@ from reviews.constants import (LENGTH_CODE, LENGTH_EMAIL, LENGTH_USERNAME,
                                FORBIDDEN_USERNAME, EMAIL_PATTERN,
                                USERNAME_PATTERN)
 from reviews.models import Category, Comment, Genre, Review, Title, User
-from reviews.utils import check_year_availability
+from reviews.validators import check_year_availability
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -87,17 +87,16 @@ class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для отзывов."""
 
     author = SlugRelatedField(read_only=True, slug_field='username')
-    title = SlugRelatedField(read_only=True, slug_field='name')
 
     class Meta:
         model = Review
-        fields = ('id', 'title', 'author', 'text', 'score', 'pub_date')
-        read_only_fields = ('author', 'title', 'pub_date')
+        fields = ('id', 'text', 'author', 'score', 'pub_date')
 
     def validate(self, data):
-        if not self.instance:
+        request = self.context.get('request')
+        if request.method == 'POST':
             reviews = Review.objects.filter(
-                author=self.context.get('request').user,
+                author=request.user,
                 title=self.context.get('title_id')
             )
             if reviews.exists():
@@ -114,8 +113,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ('id', 'review', 'author', 'text', 'pub_date')
-        read_only_fields = ('author', 'review', 'pub_date')
+        fields = ('id', 'text', 'author', 'pub_date')
 
 
 class RegisterSerializer(serializers.ModelSerializer):
