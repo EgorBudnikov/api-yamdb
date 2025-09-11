@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from reviews.constants import MAX_SCORE, MIN_SCORE
 
+
 def check_year_availability(year):
     """Проверка даты произведения."""
     current_year = timezone.now().year

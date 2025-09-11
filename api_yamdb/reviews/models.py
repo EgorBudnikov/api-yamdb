@@ -54,7 +54,8 @@ class Genre(BaseModel):
 class Title(models.Model):
     """Модель произведений."""
 
-    name = models.CharField(max_length=TEXT_MAX_LENGHT, verbose_name='Произведение',
+    name = models.CharField(max_length=TEXT_MAX_LENGHT,
+                            verbose_name='Произведение',
                             help_text='Введите название произведения')
     year = models.SmallIntegerField(
         validators=(check_year_availability,),
@@ -77,7 +78,7 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name[:MAX_NAME_LENGTH]
-    
+
     def get_genre_list(self):
         """Возвращает строку с жанрами, разделёнными запятыми."""
         return ', '.join([genre.name for genre in self.genre.all()])

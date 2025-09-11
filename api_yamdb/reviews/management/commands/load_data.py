@@ -62,7 +62,7 @@ model_field_mappings = {
 
 
 class Command(BaseCommand):
-    help = "Загрузка данных из нескольких CSV файлов в базу данных для нескольких моделей"
+    help = "Загрузка данных из нескольких CSV файлов в базу данных для моделей"
 
     def handle(self, *args, **options):
         from csv import reader
@@ -98,7 +98,7 @@ class Command(BaseCommand):
             {
                 'file_path': 'static/data/review.csv',
                 'model': Review,
-                'fields': ['title_id', 'text',  'author_id',
+                'fields': ['title_id', 'text', 'author_id',
                            'score', 'pub_date']
             },
             {
@@ -123,14 +123,14 @@ class Command(BaseCommand):
                         model_data = {
                             field_mapping[model_field]: row[i] for i,
                             model_field in enumerate(field_mapping)
-                            }
+                        }
                     else:
                         field_mapping = model_field_mappings[model]
                         model_data = {
                             field_mapping[model_field]: row[i + 1] for i,
                             model_field in enumerate(field_mapping)
-                            }
-                    
+                        }
+
                     model_instance = model(**model_data)
                     model_instance.save()
 
