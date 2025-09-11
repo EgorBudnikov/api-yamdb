@@ -1,8 +1,4 @@
-import re
-from random import randint
-
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,10 +8,9 @@ from rest_framework import (
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import AccessToken
 
 from api.constants import (
-    BAD_REQUEST, NOT_FOUND, METHOD_NOT_ALLOWED
+    BAD_REQUEST, NOT_FOUND
 )
 from api.filters import TitleFilter
 from api.permissions import (
@@ -24,9 +19,8 @@ from api.permissions import (
 from api.serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
     ReviewSerializer, TitleCreateUpdateSerializer, TitleDisplaySerializer,
-    UserSerializer, RegisterSerializer
+    UserSerializer, RegisterSerializer, TokenSerializer
 )
-from api.utils import send_mail_code
 from reviews.models import (
     Category, Comment, Genre, Review, Title, User
 )
@@ -104,35 +98,22 @@ def register_user(request):
 @permission_classes([AllowAny])
 def token_obtain(request):
     """Функция для получения токена."""
-    username = request.data.get('username')
-    confirmation_code = request.data.get('confirmation_code')
 
-    if len(request.data) != 2 or not username or not confirmation_code:
-        return Response(
-            {
-                'error': 'Для токена используйте username и confirmation_code.'
-            },
-            status=BAD_REQUEST
-        )
+    serializer = TokenSerializer(data=request.data)
 
-    try:
-        user = User.objects.get(username=username)
+    if not serializer.is_valid():
+        errors = serializer.errors
 
-        if user.is_superuser:
-            return Response({'token': str(AccessToken.for_user(user))})
+        user_not_found = getattr(serializer, 'user_not_found', False)
 
-        if not default_token_generator.check_token(user, confirmation_code):
-            return Response(
-                {'error': ['Неверный код подтверждения.']},
-                status=BAD_REQUEST
-            )
-    except User.DoesNotExist:
-        return Response(
-            {'error': ['Пользователь с таким username не найден.']},
-            status=NOT_FOUND
-        )
+        if user_not_found:
+            status = NOT_FOUND
+        else:
+            status = BAD_REQUEST
 
-    token = AccessToken.for_user(user)
+        return Response(errors, status=status)
+
+    token = serializer.save()
 
     return Response({'token': str(token)})
 

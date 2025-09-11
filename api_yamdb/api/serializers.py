@@ -2,11 +2,15 @@ import re
 from random import randint
 
 from django.db import IntegrityError
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
+from rest_framework_simplejwt.tokens import AccessToken
 
 from api.utils import send_mail_code
-from reviews.constants import LENGTH_EMAIL, LENGTH_USERNAME, FORBIDDEN_USERNAME
+from reviews.constants import (LENGTH_CODE, LENGTH_EMAIL, LENGTH_USERNAME,
+                               FORBIDDEN_USERNAME, EMAIL_PATTERN,
+                               USERNAME_PATTERN)
 from reviews.models import Category, Comment, Genre, Review, Title, User
 from reviews.utils import check_year_availability
 
@@ -151,19 +155,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         # Проверка запрещенных username
         if username and username.lower() in FORBIDDEN_USERNAME:
             errors['username'] = [
-                f'Нельзя использовать в username {", ".join(FORBIDDEN_USERNAME)}.']
+                f'Нельзя использовать username {username}.']
 
         # Проверка форматов
-        if username:
-            username_pattern = r'^[\w.@+-]+\Z'
-            if not re.match(username_pattern, username):
-                errors['username'] = [
-                    'Должен состоять из латинских букв, цифр и символов "@.+-_".']
+        if username and not re.match(USERNAME_PATTERN, username):
+            errors['username'] = [
+                'Должен состоять из латинских букв, цифр и символов @.+-_']
 
-        if email:
-            email_pattern = r'^[a-zA-Z\d_.+-]+@[a-zA-Z\d]+\.[a-zA-Z\d.]+$'
-            if not re.match(email_pattern, email):
-                errors['email'] = ['Введите корректный email.']
+        if email and not re.match(EMAIL_PATTERN, email):
+            errors['email'] = ['Введите корректный email.']
 
         if errors:
             raise serializers.ValidationError(errors)
@@ -191,3 +191,42 @@ class RegisterSerializer(serializers.ModelSerializer):
         send_mail_code(user, email)
 
         return user
+
+
+class TokenSerializer(serializers.Serializer):
+    """Серилизатор получения токена."""
+
+    username = serializers.CharField(max_length=LENGTH_USERNAME)
+    confirmation_code = serializers.CharField(max_length=LENGTH_CODE)
+
+    def validate(self, data):
+        """Валидация username и confirmation_code."""
+        username = data.get('username')
+        confirmation_code = data.get('confirmation_code')
+
+        if not username or not confirmation_code:
+            raise serializers.ValidationError(
+                'Для токена используйте username и confirmation_code.'
+            )
+
+        try:
+            self.user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            self.user_not_found = True
+            raise serializers.ValidationError({
+                'username': ['Пользователь с таким username не существует.']
+            })
+
+        if not self.user.is_admin:
+            if not default_token_generator.check_token(
+                self.user, confirmation_code
+            ):
+                raise serializers.ValidationError({
+                    'confirmation_code': ['Неверный код подтверждения.']
+                })
+
+        return data
+
+    def create(self, validated_data):
+        """Создание токена."""
+        return AccessToken.for_user(self.user)

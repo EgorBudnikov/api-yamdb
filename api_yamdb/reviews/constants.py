@@ -1,5 +1,7 @@
 FORBIDDEN_USERNAME = ['me']
+LENGTH_CODE = 6
 LENGTH_EMAIL = 254
 LENGTH_ROLE = 10
 LENGTH_USERNAME = 150
+EMAIL_PATTERN = r'^[a-zA-Z\d_.+-]+@[a-zA-Z\d]+\.[a-zA-Z\d.]+$'
 USERNAME_PATTERN = r'^[\w.@+-]+\Z'
