@@ -4,7 +4,10 @@ from django.db import models
 from reviews.constants import (
     LENGTH_EMAIL,
     LENGTH_ROLE,
-    LENGTH_USERNAME
+    LENGTH_USERNAME,
+    MAX_NAME_LENGTH,
+    TEXT_MAX_LENGHT,
+    SLUG_MAX_LENGTH
 )
 from reviews.utils import check_score, check_year_availability
 from reviews.validators import (
@@ -12,49 +15,48 @@ from reviews.validators import (
 )
 
 
-class Category(models.Model):
-    """Модель категорий."""
+class BaseModel(models.Model):
+    """Абстрактная модель для категорий и жанров."""
 
     name = models.CharField(
-        max_length=256,
-        verbose_name='Категория',
-        help_text='Введите категорию'
+        max_length=TEXT_MAX_LENGHT,
+        verbose_name='Название',
+        help_text='Введите название'
     )
-    slug = models.SlugField(max_length=50, unique=True,
-                            verbose_name='Слаг категории',
-                            help_text='Введите слаг для категории')
+    slug = models.SlugField(max_length=SLUG_MAX_LENGTH, unique=True,
+                            verbose_name='Слаг',
+                            help_text='Введите слаг')
+
+    class Meta:
+        abstract = True
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name[:MAX_NAME_LENGTH]
+
+
+class Category(BaseModel):
+    """Модель категорий."""
 
     class Meta:
         verbose_name = 'Категория'
-        verbose_name_plural = 'Категории',
-
-    def __str__(self):
-        return self.name[:15]
+        verbose_name_plural = 'Категории'
 
 
-class Genre(models.Model):
+class Genre(BaseModel):
     """Модель жанров."""
-
-    name = models.CharField(max_length=256, verbose_name='Жанр',
-                            help_text='Введите жанр')
-    slug = models.SlugField(max_length=50, unique=True,
-                            verbose_name='Слаг жанра',
-                            help_text='Введите слаг для жанра')
 
     class Meta:
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
-    def __str__(self):
-        return self.name[:15]
-
 
 class Title(models.Model):
     """Модель произведений."""
 
-    name = models.CharField(max_length=256, verbose_name='Произведение',
+    name = models.CharField(max_length=TEXT_MAX_LENGHT, verbose_name='Произведение',
                             help_text='Введите название произведения')
-    year = models.PositiveSmallIntegerField(
+    year = models.SmallIntegerField(
         validators=(check_year_availability,),
         help_text='Дата выхода произведения', verbose_name='Дата выхода')
     category = models.ForeignKey(
@@ -74,7 +76,11 @@ class Title(models.Model):
         ordering = ('year',)
 
     def __str__(self):
-        return self.name[:15]
+        return self.name[:MAX_NAME_LENGTH]
+    
+    def get_genre_list(self):
+        """Возвращает строку с жанрами, разделёнными запятыми."""
+        return ', '.join([genre.name for genre in self.genre.all()])
 
 
 class TitleGenre(models.Model):
@@ -140,7 +146,7 @@ class Review(models.Model):
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE,
         related_name='reviews',
-        verbose_name='Произведение'
+        verbose_name='Отзыв'
     )
     author = models.ForeignKey(
         User, on_delete=models.CASCADE,
