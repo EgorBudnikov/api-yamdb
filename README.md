@@ -44,7 +44,10 @@
 2. **Установить зависимости 'requirements.txt'**
    `pip install -r requirements.txt`
 
-3. **Запустить сервер:**
+3. **Установить миграции**
+`python manage.py migrate`
+
+4. **Запустить сервер:**
    `python manage.py runserver`
 
 ## Эндпоинты
@@ -188,4 +191,17 @@
 }
 ```
 
+## Загрузка данных из csv файлов в БД
+1. **Создать и активировать виртуальное окружение**
+
+```bash
+   python -m venv venv
+   source venv/bin/activate  # Linux/MacOS
+   # или
+   venv\Scripts\activate     # Windows
+```
+2. **Выполнить команду загрузки**
+`python manage.py load_csv_data`
+
+3. **Файлы для загрузки должны находиться в static/data**
 ## Авторы проекта: Будников Егор (тимлид), Метелев Павел, Тюкавин Михаил

@@ -2,6 +2,7 @@ import re
 from random import randint
 
 from django.contrib.auth.tokens import default_token_generator
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
@@ -40,14 +41,20 @@ class TitleCreateUpdateSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
         slug_field='slug', queryset=Category.objects.all()
     )
+    year = serializers.IntegerField()
 
     class Meta:
         model = Title
         fields = ('id', 'name', 'year', 'description', 'genre', 'category')
 
-    def validate_year(self, attrs):
-        check_year_availability(attrs)
-        return attrs
+    def validate_year(self, value):
+        """Валидация года."""
+        check_year_availability(value)
+        return value
+
+    def to_representation(self, instance):
+        """Преобразует вывод в формат TitleDisplaySerializer."""
+        return TitleDisplaySerializer(instance).data
 
 
 class TitleDisplaySerializer(serializers.ModelSerializer):
@@ -62,14 +69,6 @@ class TitleDisplaySerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         )
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['genre'] = GenreSerializer(
-            instance.genre.all(), many=True
-        ).data
-        representation['category'] = CategorySerializer(instance.category).data
-        return representation
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -174,20 +173,24 @@ class RegisterSerializer(serializers.Serializer):
         username = validated_data['username']
         email = validated_data['email']
 
-        existing_user = User.objects.filter(
-            username=username,
-            email=email
-        ).first()
+        defaults = {
+            'password': str(randint(10, 999999))
+        }
 
-        if existing_user:
-            user = existing_user
-        else:
-            user = User.objects.create_user(
+        for key, value in validated_data.items():
+            if key not in ['username', 'email'] and key not in defaults:
+                defaults[key] = value
+
+        try:
+            user, _ = User.objects.get_or_create(
                 username=username,
                 email=email,
-                password=str(randint(10, 999999)),
-
+                defaults=defaults
             )
+        except IntegrityError:
+            raise serializers.ValidationError({
+                'error': 'Конфликт данных пользователя'
+            })
 
         send_mail_code(user, email)
 

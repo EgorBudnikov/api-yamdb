@@ -23,6 +23,7 @@ router_v1.register(
 
 urlpatterns = [
     path('v1/', include([
+        path('', include(router_v1.urls)),
         path('auth/', include(
             [
                 path('signup/', views.register_user, name='register'),
@@ -31,5 +32,4 @@ urlpatterns = [
         )
         ),
     ])),
-    path('v1/', include(router_v1.urls)),
 ]

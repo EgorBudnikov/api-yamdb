@@ -41,7 +41,7 @@ class NameSlugModel(models.Model):
         verbose_name='Название',
         help_text='Введите название'
     )
-    slug = models.SlugField(max_length=50, unique=True,
+    slug = models.SlugField(unique=True,
                             verbose_name='Слаг',
                             help_text='Введите слаг')
 
