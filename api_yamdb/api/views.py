@@ -79,21 +79,13 @@ class CategoryViewSet(BaseCreateListDestroyViewSet):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
-    """
-    Обрабатывает регистрацию нового пользователя.
-    Всегда возвращает 200, если данные валидны.
-    """
+    """Обрабатывает регистрацию нового пользователя."""
     serializer = RegisterSerializer(data=request.data)
 
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=BAD_REQUEST)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
 
-    user = serializer.save()
-
-    return Response({
-        'email': user.email,
-        'username': user.username
-    })
+    return Response(serializer.data)
 
 
 @api_view(['POST'])
@@ -103,21 +95,9 @@ def token_obtain(request):
 
     serializer = TokenSerializer(data=request.data)
 
-    if not serializer.is_valid():
-        errors = serializer.errors
+    serializer.is_valid(raise_exception=True)
 
-        user_not_found = getattr(serializer, 'user_not_found', False)
-
-        if user_not_found:
-            status = NOT_FOUND
-        else:
-            status = BAD_REQUEST
-
-        return Response(errors, status=status)
-
-    token = serializer.save()
-
-    return Response({'token': str(token)})
+    return Response({'token': str(serializer.save())})
 
 
 class UsersViewSet(viewsets.ModelViewSet):

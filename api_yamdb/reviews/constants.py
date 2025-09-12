@@ -7,6 +7,4 @@ MAX_NAME_LENGTH = 15
 MAX_SCORE = 10
 MIN_SCORE = 1
 TEXT_MAX_LENGHT = 256
-SLUG_MAX_LENGTH = 50
 USERNAME_PATTERN = r'^[\w.@+-]+\Z'
-EMAIL_PATTERN = r'^[a-zA-Z\d_.+-]+@[a-zA-Z\d]+\.[a-zA-Z\d.]+$'

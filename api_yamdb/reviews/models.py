@@ -7,7 +7,6 @@ from reviews.constants import (
     LENGTH_USERNAME,
     MAX_NAME_LENGTH,
     TEXT_MAX_LENGHT,
-    SLUG_MAX_LENGTH
 )
 from reviews.validators import (
     check_name_username_validators,
@@ -36,7 +35,7 @@ class BaseModel(models.Model):
         verbose_name='Название',
         help_text='Введите название'
     )
-    slug = models.SlugField(max_length=SLUG_MAX_LENGTH, unique=True,
+    slug = models.SlugField(max_length=50, unique=True,
                             verbose_name='Слаг',
                             help_text='Введите слаг')
 
