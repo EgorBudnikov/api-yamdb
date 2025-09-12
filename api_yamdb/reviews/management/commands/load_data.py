@@ -1,3 +1,5 @@
+from csv import reader
+
 from django.core.management.base import BaseCommand
 
 from reviews.models import (
@@ -5,28 +7,30 @@ from reviews.models import (
 )
 
 
-category_field_mapping = {
+BASE_PATH = 'static/data/'
+
+CATEGORY_FIELD_MAPPING = {
     'name': 'name',
     'slug': 'slug'
 }
 
-genre_field_mapping = {
+GENRE_FIELD_MAPPING = {
     'name': 'name',
     'slug': 'slug'
 }
 
-title_field_mapping = {
+TITLE_FIELD_MAPPING = {
     'name': 'name',
     'year': 'year',
     'category': 'category_id'
 }
 
-title_genre_field_mapping = {
+TITLE_GENRE_FIELD_MAPPING = {
     'title_id': 'title_id',
     'genre_id': 'genre_id'
 }
 
-user_field_mapping = {
+USER_FIELD_MAPPING = {
     'id': 'id',
     'username': 'username',
     'email': 'email',
@@ -36,7 +40,7 @@ user_field_mapping = {
     'last_name': 'last_name'
 }
 
-review_field_mapping = {
+REVIEW_FIELD_MAPPING = {
     'title_id': 'title_id',
     'text': 'text',
     'author': 'author_id',
@@ -44,7 +48,7 @@ review_field_mapping = {
     'pub_date': 'pub_date'
 }
 
-comment_field_mapping = {
+COMMENT__FIELD_MAPPING = {
     'review_id': 'review_id',
     'text': 'text',
     'author': 'author_id',
@@ -52,12 +56,12 @@ comment_field_mapping = {
 }
 
 model_field_mappings = {
-    Category: category_field_mapping,
-    Genre: genre_field_mapping,
-    Title: title_field_mapping,
-    TitleGenre: title_genre_field_mapping,
-    Review: review_field_mapping,
-    Comment: comment_field_mapping
+    Category: CATEGORY_FIELD_MAPPING,
+    Genre: GENRE_FIELD_MAPPING,
+    Title: TITLE_FIELD_MAPPING,
+    TitleGenre: TITLE_GENRE_FIELD_MAPPING,
+    Review: REVIEW_FIELD_MAPPING,
+    Comment: COMMENT__FIELD_MAPPING
 }
 
 
@@ -65,44 +69,43 @@ class Command(BaseCommand):
     help = "Загрузка данных из нескольких CSV файлов в базу данных для моделей"
 
     def handle(self, *args, **options):
-        from csv import reader
 
         # Список путей к вашим CSV файлам и соответствующие модели
         csv_files_and_models = [
             {
-                'file_path': 'static/data/category.csv',
+                'file_path': BASE_PATH + 'category.csv',
                 'model': Category,
                 'fields': ['name', 'slug']
             },
             {
-                'file_path': 'static/data/genre.csv',
+                'file_path': BASE_PATH + 'genre.csv',
                 'model': Genre,
                 'fields': ['name', 'slug']
             },
             {
-                'file_path': 'static/data/titles.csv',
+                'file_path': BASE_PATH + 'titles.csv',
                 'model': Title,
                 'fields': ['name', 'description', 'year', 'category_id']
             },
             {
-                'file_path': 'static/data/genre_title.csv',
+                'file_path': BASE_PATH + 'genre_title.csv',
                 'model': TitleGenre,
                 'fields': ['title_id', 'genre_id']
             },
             {
-                'file_path': 'static/data/users.csv',
+                'file_path': BASE_PATH + 'users.csv',
                 'model': User,
                 'fields': ['id', 'username', 'email', 'role',
                            'bio', 'first_name', 'last_name']
             },
             {
-                'file_path': 'static/data/review.csv',
+                'file_path': BASE_PATH + 'review.csv',
                 'model': Review,
                 'fields': ['title_id', 'text', 'author_id',
                            'score', 'pub_date']
             },
             {
-                'file_path': 'static/data/comments.csv',
+                'file_path': BASE_PATH + 'comments.csv',
                 'model': Comment,
                 'fields': ['text', 'pub_date', 'author', 'review']
             }
@@ -119,7 +122,7 @@ class Command(BaseCommand):
                 for row in csv_reader:
                     # Сопоставляем данные из строки CSV с полями модели
                     if model == User:
-                        field_mapping = user_field_mapping
+                        field_mapping = USER_FIELD_MAPPING
                         model_data = {
                             field_mapping[model_field]: row[i] for i,
                             model_field in enumerate(field_mapping)
