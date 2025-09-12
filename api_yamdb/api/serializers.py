@@ -170,27 +170,11 @@ class RegisterSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """Создает или получает пользователя."""
-        username = validated_data['username']
         email = validated_data['email']
 
-        defaults = {
-            'password': str(randint(10, 999999))
-        }
-
-        for key, value in validated_data.items():
-            if key not in ['username', 'email'] and key not in defaults:
-                defaults[key] = value
-
-        try:
-            user, _ = User.objects.get_or_create(
-                username=username,
-                email=email,
-                defaults=defaults
-            )
-        except IntegrityError:
-            raise serializers.ValidationError({
-                'error': 'Конфликт данных пользователя'
-            })
+        user, _ = User.objects.get_or_create(
+            **validated_data,
+        )
 
         send_mail_code(user, email)
 
