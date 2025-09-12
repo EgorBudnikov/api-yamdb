@@ -43,7 +43,7 @@ class TitleCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = ('id', 'name', 'year', 'description', 'genre', 'category')
 
     def validate_year(self, attrs):
         check_year_availability(attrs)
@@ -59,7 +59,9 @@ class TitleDisplaySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = (
+            'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
+        )
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

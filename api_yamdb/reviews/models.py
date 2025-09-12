@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.contrib import admin
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -16,9 +18,13 @@ from reviews.validators import (
 )
 
 
-class ContentBaseModel(models.Model):
+class AuthorTextDateModel(models.Model):
     """Абстрактная модель для пользовательского контента."""
 
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        verbose_name='Автор'
+    )
     text = models.TextField('Текст')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
 
@@ -27,7 +33,7 @@ class ContentBaseModel(models.Model):
         ordering = ('-pub_date',)
 
 
-class BaseModel(models.Model):
+class NameSlugModel(models.Model):
     """Абстрактная модель для категорий и жанров."""
 
     name = models.CharField(
@@ -47,20 +53,18 @@ class BaseModel(models.Model):
         return self.name[:MAX_NAME_LENGTH]
 
 
-class Category(BaseModel):
+class Category(NameSlugModel):
     """Модель категорий."""
 
-    class Meta(BaseModel.Meta):
-        abstract = False
+    class Meta(NameSlugModel.Meta):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
 
-class Genre(BaseModel):
+class Genre(NameSlugModel):
     """Модель жанров."""
 
-    class Meta(BaseModel.Meta):
-        abstract = False
+    class Meta(NameSlugModel.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -93,10 +97,10 @@ class Title(models.Model):
     def __str__(self):
         return self.name[:MAX_NAME_LENGTH]
 
+    @admin.display(description='Жанры')
     def get_genre_list(self):
         """Возвращает строку с жанрами, разделёнными запятыми."""
         return ', '.join([genre.name for genre in self.genre.all()])
-    get_genre_list.short_description = 'Жанры'
 
 
 class TitleGenre(models.Model):
@@ -156,24 +160,19 @@ class User(AbstractUser):
         return self.role == self.moderator
 
 
-class Review(ContentBaseModel):
+class Review(AuthorTextDateModel):
     """Модель для отзывов."""
 
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE,
         verbose_name='Отзыв'
     )
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        verbose_name='Автор отзыва'
-    )
     score = models.PositiveSmallIntegerField(
         verbose_name='Оценка',
         validators=(check_score,),
     )
 
-    class Meta(ContentBaseModel.Meta):
-        abstract = False
+    class Meta(AuthorTextDateModel.Meta):
         default_related_name = 'reviews'
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
@@ -188,20 +187,15 @@ class Review(ContentBaseModel):
         return f'Отзыв автора {self.author} на {self.title}'
 
 
-class Comment(ContentBaseModel):
+class Comment(AuthorTextDateModel):
     """Модель для комментариев к отзывам."""
 
     review = models.ForeignKey(
         Review, on_delete=models.CASCADE,
         verbose_name='Отзыв'
     )
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        verbose_name='Автор комментария'
-    )
 
-    class Meta(ContentBaseModel.Meta):
-        abstract = False
+    class Meta(AuthorTextDateModel.Meta):
         default_related_name = 'comments'
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
