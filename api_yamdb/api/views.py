@@ -11,9 +11,6 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 
-from api.constants import (
-    BAD_REQUEST, NOT_FOUND
-)
 from api.filters import TitleFilter
 from api.permissions import (
     AdminPerm, IsAdminOrReadOnly, IsAuthorModeratorAdminOrReadOnly
