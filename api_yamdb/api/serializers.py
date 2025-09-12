@@ -1,8 +1,6 @@
 import re
-from random import randint
 
 from django.contrib.auth.tokens import default_token_generator
-from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
